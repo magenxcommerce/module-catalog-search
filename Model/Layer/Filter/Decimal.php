@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\CatalogSearch\Model\Layer\Filter;
 
 use Magento\Catalog\Model\Layer\Filter\AbstractFilter;
@@ -113,9 +111,12 @@ class Decimal extends AbstractFilter
                 $from = '';
             }
             if ($to == '*') {
-                $to = null;
+                $to = '';
             }
-            $label = $this->renderRangeLabel(empty($from) ? 0 : $from, $to);
+            $label = $this->renderRangeLabel(
+                empty($from) ? 0 : $from,
+                empty($to) ? 0 : $to
+            );
             $value = $from . '-' . $to;
 
             $data[] = [
@@ -140,7 +141,7 @@ class Decimal extends AbstractFilter
     protected function renderRangeLabel($fromPrice, $toPrice)
     {
         $formattedFromPrice = $this->priceCurrency->format($fromPrice);
-        if ($toPrice === null) {
+        if ($toPrice === '') {
             return __('%1 and above', $formattedFromPrice);
         } else {
             if ($fromPrice != $toPrice) {

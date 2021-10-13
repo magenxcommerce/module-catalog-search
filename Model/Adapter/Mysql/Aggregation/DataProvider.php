@@ -16,12 +16,9 @@ use Magento\Framework\DB\Ddl\Table;
 use Magento\Framework\DB\Select;
 use Magento\Framework\Search\Adapter\Mysql\Aggregation\DataProviderInterface;
 use Magento\Framework\Search\Request\BucketInterface;
-use Magento\Framework\Event\Manager;
 
 /**
- * Data Provider for catalog search.
- *
- * @deprecated 101.0.0
+ * @deprecated
  * @see \Magento\ElasticSearch
  */
 class DataProvider implements DataProviderInterface
@@ -47,17 +44,11 @@ class DataProvider implements DataProviderInterface
     private $selectBuilderForAttribute;
 
     /**
-     * @var Manager
-     */
-    private $eventManager;
-
-    /**
      * @param Config $eavConfig
      * @param ResourceConnection $resource
      * @param ScopeResolverInterface $scopeResolver
      * @param null $customerSession @deprecated
      * @param SelectBuilderForAttribute|null $selectBuilderForAttribute
-     * @param Manager|null $eventManager
      *
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      */
@@ -66,19 +57,17 @@ class DataProvider implements DataProviderInterface
         ResourceConnection $resource,
         ScopeResolverInterface $scopeResolver,
         $customerSession,
-        SelectBuilderForAttribute $selectBuilderForAttribute = null,
-        Manager $eventManager = null
+        SelectBuilderForAttribute $selectBuilderForAttribute = null
     ) {
         $this->eavConfig = $eavConfig;
         $this->connection = $resource->getConnection();
         $this->scopeResolver = $scopeResolver;
         $this->selectBuilderForAttribute = $selectBuilderForAttribute
             ?: ObjectManager::getInstance()->get(SelectBuilderForAttribute::class);
-        $this->eventManager = $eventManager ?: ObjectManager::getInstance()->get(Manager::class);
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function getDataSet(
         BucketInterface $bucket,
@@ -94,17 +83,13 @@ class DataProvider implements DataProviderInterface
             'main_table.entity_id  = entities.entity_id',
             []
         );
-        $this->eventManager->dispatch(
-            'catalogsearch_query_add_filter_after',
-            ['bucket' => $bucket, 'select' => $select]
-        );
         $select = $this->selectBuilderForAttribute->build($select, $attribute, $currentScope);
 
         return $select;
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function execute(Select $select)
     {
@@ -112,8 +97,6 @@ class DataProvider implements DataProviderInterface
     }
 
     /**
-     * Get select.
-     *
      * @return Select
      */
     private function getSelect()

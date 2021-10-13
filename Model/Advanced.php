@@ -6,8 +6,6 @@
 namespace Magento\CatalogSearch\Model;
 
 use Magento\Catalog\Model\Config;
-use Magento\CatalogSearch\Model\Advanced\ProductCollectionPrepareStrategyProvider;
-use Magento\CatalogSearch\Model\Search\ItemCollectionProviderInterface;
 use Magento\Catalog\Model\Product\Visibility;
 use Magento\Catalog\Model\ProductFactory;
 use Magento\Catalog\Model\ResourceModel\Eav\Attribute;
@@ -21,7 +19,6 @@ use Magento\Framework\Model\Context;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Registry;
 use Magento\Store\Model\StoreManagerInterface;
-use Magento\Framework\App\ObjectManager;
 
 /**
  * Catalog advanced search model
@@ -67,7 +64,6 @@ class Advanced extends \Magento\Framework\Model\AbstractModel
     /**
      * Initialize dependencies
      *
-     * @deprecated 101.0.2
      * @var Config
      */
     protected $_catalogConfig;
@@ -110,21 +106,9 @@ class Advanced extends \Magento\Framework\Model\AbstractModel
     /**
      * Advanced Collection Factory
      *
-     * @deprecated
-     * @see $collectionProvider
      * @var ProductCollectionFactory
      */
     protected $productCollectionFactory;
-
-    /**
-     * @var ItemCollectionProviderInterface
-     */
-    private $collectionProvider;
-
-    /**
-     * @var ProductCollectionPrepareStrategyProvider|null
-     */
-    private $productCollectionPrepareStrategyProvider;
 
     /**
      * Construct
@@ -140,8 +124,7 @@ class Advanced extends \Magento\Framework\Model\AbstractModel
      * @param ProductCollectionFactory $productCollectionFactory
      * @param AdvancedFactory $advancedFactory
      * @param array $data
-     * @param ItemCollectionProviderInterface|null $collectionProvider
-     * @param ProductCollectionPrepareStrategyProvider|null $productCollectionPrepareStrategyProvider
+     *
      * @SuppressWarnings(PHPMD.ExcessiveParameterList)
      */
     public function __construct(
@@ -155,9 +138,7 @@ class Advanced extends \Magento\Framework\Model\AbstractModel
         StoreManagerInterface $storeManager,
         ProductCollectionFactory $productCollectionFactory,
         AdvancedFactory $advancedFactory,
-        array $data = [],
-        ItemCollectionProviderInterface $collectionProvider = null,
-        ProductCollectionPrepareStrategyProvider $productCollectionPrepareStrategyProvider = null
+        array $data = []
     ) {
         $this->_attributeCollectionFactory = $attributeCollectionFactory;
         $this->_catalogProductVisibility = $catalogProductVisibility;
@@ -166,14 +147,11 @@ class Advanced extends \Magento\Framework\Model\AbstractModel
         $this->_productFactory = $productFactory;
         $this->_storeManager = $storeManager;
         $this->productCollectionFactory = $productCollectionFactory;
-        $this->collectionProvider = $collectionProvider;
-        $this->productCollectionPrepareStrategyProvider = $productCollectionPrepareStrategyProvider
-            ?: ObjectManager::getInstance()->get(ProductCollectionPrepareStrategyProvider::class);
         parent::__construct(
             $context,
             $registry,
             $advancedFactory->create(),
-            $this->resolveProductCollection(),
+            $this->productCollectionFactory->create(),
             $data
         );
     }
@@ -181,8 +159,8 @@ class Advanced extends \Magento\Framework\Model\AbstractModel
     /**
      * Add advanced search filters to product collection
      *
-     * @param array $values
-     * @return $this
+     * @param   array $values
+     * @return  $this
      * @throws LocalizedException
      * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      * @SuppressWarnings(PHPMD.NPathComplexity)
@@ -196,11 +174,6 @@ class Advanced extends \Magento\Framework\Model\AbstractModel
             /* @var $attribute Attribute */
             if (!isset($values[$attribute->getAttributeCode()])) {
                 continue;
-            }
-            if ($attribute->getFrontendInput() == 'text' || $attribute->getFrontendInput() == 'textarea') {
-                if (!trim($values[$attribute->getAttributeCode()])) {
-                    continue;
-                }
             }
             $value = $values[$attribute->getAttributeCode()];
             $preparedSearchValue = $this->getPreparedSearchCriteria($attribute, $value);
@@ -293,7 +266,7 @@ class Advanced extends \Magento\Framework\Model\AbstractModel
     public function getProductCollection()
     {
         if ($this->_productCollection === null) {
-            $collection = $this->resolveProductCollection();
+            $collection = $this->productCollectionFactory->create();
             $this->prepareProductCollection($collection);
             if (!$collection) {
                 return $collection;
@@ -305,18 +278,6 @@ class Advanced extends \Magento\Framework\Model\AbstractModel
     }
 
     /**
-     * Resolve product collection.
-     *
-     * @return \Magento\Catalog\Model\ResourceModel\Product\Collection|\Magento\Framework\Data\Collection
-     */
-    private function resolveProductCollection()
-    {
-        return (null === $this->collectionProvider)
-            ? $this->productCollectionFactory->create()
-            : $this->collectionProvider->getCollection();
-    }
-
-    /**
      * Prepare product collection
      *
      * @param Collection $collection
@@ -324,7 +285,13 @@ class Advanced extends \Magento\Framework\Model\AbstractModel
      */
     public function prepareProductCollection($collection)
     {
-        $this->productCollectionPrepareStrategyProvider->getStrategy()->prepare($collection);
+        $collection
+            ->addAttributeToSelect($this->_catalogConfig->getProductAttributes())
+            ->setStore($this->_storeManager->getStore())
+            ->addMinimalPrice()
+            ->addTaxPercents()
+            ->addStoreFilter()
+            ->setVisibility($this->_catalogProductVisibility->getVisibleInSearchIds());
 
         return $this;
     }
@@ -348,9 +315,9 @@ class Advanced extends \Magento\Framework\Model\AbstractModel
      *
      * @todo: Move this code to block
      *
-     * @param EntityAttribute $attribute
-     * @param mixed $value
-     * @return string|bool
+     * @param   EntityAttribute $attribute
+     * @param   mixed $value
+     * @return  string|bool
      * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      * @SuppressWarnings(PHPMD.NPathComplexity)
      */

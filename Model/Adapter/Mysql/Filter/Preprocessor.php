@@ -8,9 +8,7 @@ namespace Magento\CatalogSearch\Model\Adapter\Mysql\Filter;
 use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Model\Product;
 use Magento\Catalog\Model\ResourceModel\Eav\Attribute;
-use Magento\CatalogSearch\Model\Search\FilterMapper\VisibilityFilter;
 use Magento\CatalogSearch\Model\Search\TableMapper;
-use Magento\Customer\Model\Session;
 use Magento\Eav\Model\Config;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\ObjectManager;
@@ -22,13 +20,12 @@ use Magento\Framework\Search\Adapter\Mysql\ConditionManager;
 use Magento\Framework\Search\Adapter\Mysql\Filter\PreprocessorInterface;
 use Magento\Framework\Search\Request\FilterInterface;
 use Magento\Store\Model\Store;
+use Magento\Customer\Model\Session;
+use Magento\CatalogSearch\Model\Search\FilterMapper\VisibilityFilter;
 
 /**
- * ElasticSearch search filter pre-processor.
- *
- * @SuppressWarnings(PHPMD.CookieAndSessionMisuse)
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
- * @deprecated 101.0.0
+ * @deprecated
  * @see \Magento\ElasticSearch
  */
 class Preprocessor implements PreprocessorInterface
@@ -131,7 +128,7 @@ class Preprocessor implements PreprocessorInterface
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function process(FilterInterface $filter, $isNegation, $query)
     {
@@ -139,13 +136,10 @@ class Preprocessor implements PreprocessorInterface
     }
 
     /**
-     * Process query with field.
-     *
      * @param FilterInterface $filter
      * @param bool $isNegation
      * @param string $query
      * @return string
-     * @throws \Magento\Framework\Exception\LocalizedException
      */
     private function processQueryWithField(FilterInterface $filter, $isNegation, $query)
     {
@@ -165,10 +159,7 @@ class Preprocessor implements PreprocessorInterface
                 $this->customerSession->getCustomerGroupId()
             );
         } elseif ($filter->getField() === 'category_ids') {
-            return $this->connection->quoteInto(
-                'category_ids_index.category_id in (?)',
-                $filter->getValue()
-            );
+            return 'category_ids_index.category_id = ' . (int) $filter->getValue();
         } elseif ($attribute->isStatic()) {
             $alias = $this->aliasResolver->getAlias($filter);
             $resultQuery = str_replace(
@@ -179,7 +170,7 @@ class Preprocessor implements PreprocessorInterface
         } elseif ($filter->getField() === VisibilityFilter::VISIBILITY_FILTER_FIELD) {
             return '';
         } elseif ($filter->getType() === FilterInterface::TYPE_TERM &&
-            in_array($attribute->getFrontendInput(), ['select', 'multiselect', 'boolean'], true)
+            in_array($attribute->getFrontendInput(), ['select', 'multiselect'], true)
         ) {
             $resultQuery = $this->processTermSelect($filter, $isNegation);
         } elseif ($filter->getType() === FilterInterface::TYPE_RANGE &&
@@ -201,9 +192,8 @@ class Preprocessor implements PreprocessorInterface
                 )
                 ->joinLeft(
                     ['current_store' => $table],
-                    "current_store.{$linkIdField} = main_table.{$linkIdField} AND "
-                        . "current_store.attribute_id = main_table.attribute_id AND current_store.store_id = "
-                        . $currentStoreId,
+                    'current_store.attribute_id = main_table.attribute_id AND current_store.store_id = '
+                    . $currentStoreId,
                     null
                 )
                 ->columns([$filter->getField() => $ifNullCondition])
@@ -214,23 +204,19 @@ class Preprocessor implements PreprocessorInterface
                 ->where('main_table.store_id = ?', Store::DEFAULT_STORE_ID)
                 ->having($query);
 
-            $resultQuery = 'search_index.entity_id IN ('
-                . 'select entity_id from  '
-                . $this->conditionManager->wrapBrackets($select)
-                . ' as filter)';
+            $resultQuery = 'search_index.entity_id IN (
+                select entity_id from  ' . $this->conditionManager->wrapBrackets($select) . ' as filter
+            )';
         }
 
         return $resultQuery;
     }
 
     /**
-     * Process range numeric.
-     *
      * @param FilterInterface $filter
      * @param string $query
      * @param Attribute $attribute
      * @return string
-     * @throws \Exception
      */
     private function processRangeNumeric(FilterInterface $filter, $query, $attribute)
     {
@@ -252,17 +238,14 @@ class Preprocessor implements PreprocessorInterface
             ->where('main_table.store_id = ?', $currentStoreId)
             ->having($query);
 
-        $resultQuery = 'search_index.entity_id IN ('
-            . 'select entity_id from  '
-            . $this->conditionManager->wrapBrackets($select)
-            . ' as filter)';
+        $resultQuery = 'search_index.entity_id IN (
+                select entity_id from  ' . $this->conditionManager->wrapBrackets($select) . ' as filter
+            )';
 
         return $resultQuery;
     }
 
     /**
-     * Process term select.
-     *
      * @param FilterInterface $filter
      * @param bool $isNegation
      * @return string

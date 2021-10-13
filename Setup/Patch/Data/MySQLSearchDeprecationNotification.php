@@ -10,7 +10,7 @@ namespace Magento\CatalogSearch\Setup\Patch\Data;
 /**
  * Implementation of the notification about MySQL search being deprecated.
  *
- * @deprecated 101.0.0
+ * @deprecated
  * @see \Magento\ElasticSearch
  */
 class MySQLSearchDeprecationNotification implements \Magento\Framework\Setup\Patch\DataPatchInterface
@@ -25,10 +25,6 @@ class MySQLSearchDeprecationNotification implements \Magento\Framework\Setup\Pat
      */
     private $notifier;
 
-    /**
-     * @param \Magento\Framework\Search\EngineResolverInterface $searchEngineResolver
-     * @param \Magento\Framework\Notification\NotifierInterface $notifier
-     */
     public function __construct(
         \Magento\Framework\Search\EngineResolverInterface $searchEngineResolver,
         \Magento\Framework\Notification\NotifierInterface $notifier

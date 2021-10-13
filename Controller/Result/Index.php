@@ -21,11 +21,6 @@ use Magento\Search\Model\PopularSearchTerms;
 class Index extends \Magento\Framework\App\Action\Action implements HttpGetActionInterface, HttpPostActionInterface
 {
     /**
-     * No results default handle.
-     */
-    const DEFAULT_NO_RESULT_HANDLE = 'catalogsearch_result_index_noresults';
-
-    /**
      * Catalog session
      *
      * @var Session
@@ -95,19 +90,12 @@ class Index extends \Magento\Framework\App\Action\Action implements HttpGetActio
             $getAdditionalRequestParameters = $this->getRequest()->getParams();
             unset($getAdditionalRequestParameters[QueryFactory::QUERY_VAR_NAME]);
 
-            $handles = null;
-            if ($query->getNumResults() == 0) {
-                $this->_view->getPage()->initLayout();
-                $handles = $this->_view->getLayout()->getUpdate()->getHandles();
-                $handles[] = static::DEFAULT_NO_RESULT_HANDLE;
-            }
-
             if (empty($getAdditionalRequestParameters) &&
                 $this->_objectManager->get(PopularSearchTerms::class)->isCacheable($queryText, $storeId)
             ) {
-                $this->getCacheableResult($catalogSearchHelper, $query, $handles);
+                $this->getCacheableResult($catalogSearchHelper, $query);
             } else {
-                $this->getNotCacheableResult($catalogSearchHelper, $query, $handles);
+                $this->getNotCacheableResult($catalogSearchHelper, $query);
             }
         } else {
             $this->getResponse()->setRedirect($this->_redirect->getRedirectUrl());
@@ -119,10 +107,9 @@ class Index extends \Magento\Framework\App\Action\Action implements HttpGetActio
      *
      * @param \Magento\CatalogSearch\Helper\Data $catalogSearchHelper
      * @param \Magento\Search\Model\Query $query
-     * @param array $handles
      * @return void
      */
-    private function getCacheableResult($catalogSearchHelper, $query, $handles)
+    private function getCacheableResult($catalogSearchHelper, $query)
     {
         if (!$catalogSearchHelper->isMinQueryLength()) {
             $redirect = $query->getRedirect();
@@ -134,7 +121,7 @@ class Index extends \Magento\Framework\App\Action\Action implements HttpGetActio
 
         $catalogSearchHelper->checkNotes();
 
-        $this->_view->loadLayout($handles);
+        $this->_view->loadLayout();
         $this->_view->renderLayout();
     }
 
@@ -143,12 +130,11 @@ class Index extends \Magento\Framework\App\Action\Action implements HttpGetActio
      *
      * @param \Magento\CatalogSearch\Helper\Data $catalogSearchHelper
      * @param \Magento\Search\Model\Query $query
-     * @param array $handles
      * @return void
      *
      * @throws \Magento\Framework\Exception\LocalizedException
      */
-    private function getNotCacheableResult($catalogSearchHelper, $query, $handles)
+    private function getNotCacheableResult($catalogSearchHelper, $query)
     {
         if ($catalogSearchHelper->isMinQueryLength()) {
             $query->setId(0)->setIsActive(1)->setIsProcessed(1);
@@ -163,7 +149,7 @@ class Index extends \Magento\Framework\App\Action\Action implements HttpGetActio
 
         $catalogSearchHelper->checkNotes();
 
-        $this->_view->loadLayout($handles);
+        $this->_view->loadLayout();
         $this->getResponse()->setNoCacheHeaders();
         $this->_view->renderLayout();
     }

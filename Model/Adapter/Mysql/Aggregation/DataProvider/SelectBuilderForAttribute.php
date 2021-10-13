@@ -22,7 +22,7 @@ use Magento\Store\Model\Store;
 /**
  * Build select for attribute.
  *
- * @deprecated 101.0.0
+ * @deprecated
  * @see \Magento\ElasticSearch
  */
 class SelectBuilderForAttribute
@@ -74,8 +74,6 @@ class SelectBuilderForAttribute
     }
 
     /**
-     * Build select for attribute search
-     *
      * @param Select $select
      * @param AbstractAttribute $attribute
      * @param int $currentScope
@@ -103,7 +101,7 @@ class SelectBuilderForAttribute
             $subSelect = $select;
             $subSelect->from(['main_table' => $table], ['main_table.entity_id', 'main_table.value'])
                 ->distinct()
-                ->where('main_table.attribute_id = ?', (int) $attribute->getAttributeId())
+                ->where('main_table.attribute_id = ?', $attribute->getAttributeId())
                 ->where('main_table.store_id = ? ', $currentScopeId);
             if ($this->isAddStockFilter()) {
                 $subSelect = $this->applyStockConditionToSelect->execute($subSelect);
@@ -118,8 +116,6 @@ class SelectBuilderForAttribute
     }
 
     /**
-     * Is add stock filter
-     *
      * @return bool
      */
     private function isAddStockFilter()
